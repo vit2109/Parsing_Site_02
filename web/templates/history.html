@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Хронология сближений</title>
+    <link rel="stylesheet" href="/static/css/app.css?v=6" />
+  </head>
+  <body>
+    <div class="app history-app">
+      <header class="topbar history-topbar">
+        <div>
+          <p class="kicker">Parsing Site</p>
+          <h1>Хронология сближений</h1>
+        </div>
+        <p class="muted history-lead">
+          Динамические объекты, приближавшиеся к выбранной стационарной точке
+        </p>
+        <div class="topbar__actions">
+          <a class="btn btn-ghost" href="/">← Мониторинг</a>
+        </div>
+      </header>
+
+      <section class="panel history-filter-panel">
+        <form id="history-form" class="history-filters">
+          <label>
+            Источник данных
+            <select id="history-source" name="source">
+              <option value="real">Реальные данные</option>
+              <option value="fake">Тестовые данные</option>
+            </select>
+          </label>
+          <label>
+            Стационарный объект
+            <select id="history-static" name="static_index" required>
+              <option value="">Загрузка…</option>
+            </select>
+          </label>
+          <label>
+            Период с
+            <input id="history-from" name="date_from" type="date" required />
+          </label>
+          <label>
+            Период по
+            <input id="history-to" name="date_to" type="date" required />
+          </label>
+          <label>
+            Радиус приближения, км
+            <input name="max_distance_km" type="number" min="0.001" max="20000" step="0.001" value="10" required />
+          </label>
+          <label>
+            Динамический объект
+            <input name="dynamic" type="search" placeholder="Все, либо имя / номер" />
+          </label>
+          <button class="btn btn-primary history-submit" type="submit">Показать</button>
+          <button id="btn-export-history" class="btn" type="button">Экспорт в Excel</button>
+          <button id="btn-regenerate-fake" class="btn" type="button" hidden>
+            Пересоздать тестовые данные
+          </button>
+        </form>
+        <p id="history-static-meta" class="muted history-static-meta"></p>
+      </section>
+
+      <p id="history-error" class="error-banner" hidden></p>
+      <p id="history-notice" class="history-notice" hidden></p>
+
+      <section class="stats history-stats">
+        <article><span>Записей</span><strong id="history-total">0</strong></article>
+        <article><span>Динамических объектов</span><strong id="history-unique">0</strong></article>
+        <article><span>Минимальное расстояние</span><strong id="history-min">—</strong></article>
+        <article><span>Старых записей в px</span><strong id="history-legacy">0</strong></article>
+      </section>
+
+      <section class="panel history-map-panel">
+        <div class="panel__head">
+          <div>
+            <h2>Все стационарные объекты</h2>
+            <p class="muted">Нажмите на маркер, чтобы увидеть зоны и проходившие через них траектории</p>
+          </div>
+          <span id="history-static-count" class="site-chip">0 объектов</span>
+        </div>
+        <div id="history-overview-map" class="history-map" aria-label="Карта стационарных объектов"></div>
+      </section>
+
+      <section class="panel" id="history-summary-panel" hidden>
+        <div class="panel__head">
+          <h2>Объекты за период</h2>
+          <p class="muted">минимальное сближение в километрах</p>
+        </div>
+        <div id="history-summary" class="history-summary"></div>
+        <div class="history-legend" aria-label="Обозначения цветов">
+          <span><i class="legend-dot alert"></i> Красная зона опроса</span>
+          <span><i class="legend-dot warning"></i> Жёлтая зона предупреждения</span>
+          <span><i class="legend-dot ok"></i> В выбранном радиусе</span>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel__head">
+          <h2>События по времени</h2>
+          <p id="history-meta" class="muted">Задайте фильтры и нажмите «Показать»</p>
+        </div>
+        <div class="table-wrap history-table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Дата и время</th>
+                <th>Стационарный объект</th>
+                <th>Координаты стационарного</th>
+                <th>Динамический объект</th>
+                <th>Координаты динамического</th>
+                <th>Расстояние, км</th>
+                <th>Статус</th>
+              </tr>
+            </thead>
+            <tbody id="history-body">
+              <tr class="empty"><td colspan="7">Хронология пока не загружена</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+
+    <dialog id="trajectory-modal" class="history-modal">
+      <div class="history-modal__head">
+        <div>
+          <p class="kicker">Траектория</p>
+          <h2 id="trajectory-title">Динамический объект</h2>
+          <p id="trajectory-meta" class="muted"></p>
+        </div>
+        <button class="btn btn-ghost modal-close" type="button" aria-label="Закрыть">✕</button>
+      </div>
+      <div class="history-modal__layout">
+        <div id="trajectory-map" class="history-map history-detail-map"></div>
+        <div class="history-point-panel">
+          <h3>Точки маршрута</h3>
+          <div id="trajectory-points" class="history-point-list"></div>
+        </div>
+      </div>
+    </dialog>
+
+    <dialog id="static-modal" class="history-modal history-modal--wide">
+      <div class="history-modal__head">
+        <div>
+          <p class="kicker">Стационарный объект</p>
+          <h2 id="static-title">Зоны объекта</h2>
+          <p id="static-zone-meta" class="muted"></p>
+        </div>
+        <button class="btn btn-ghost modal-close" type="button" aria-label="Закрыть">✕</button>
+      </div>
+      <div class="history-modal__layout">
+        <div id="static-zone-map" class="history-map history-detail-map"></div>
+        <div class="history-point-panel">
+          <h3>Объекты, входившие в зоны</h3>
+          <div id="static-trajectories" class="history-point-list"></div>
+        </div>
+      </div>
+    </dialog>
+
+    <script src="/static/js/russia-map-data.js?v=1"></script>
+    <script src="/static/js/russia-additional-regions-data.js?v=1"></script>
+    <script src="/static/js/history.js?v=9"></script>
+  </body>
+</html>

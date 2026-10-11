@@ -1,0 +1,190 @@
+"""Фоновый опрос вкладки Chrome и загрузка тестового HTML в таблицу UI."""
+
+from __future__ import annotations
+
+import threading
+from time import monotonic
+from typing import Any
+
+from parsing_site.browser import BrowserNotConnectedError, BrowserSession
+from parsing_site.config import load_config
+from parsing_site.db import Database
+from parsing_site.settings_store import SettingsStore
+from parsing_site.table_history_db import TableHistoryDatabase
+from parsing_site.tracking import capture_snapshot, snapshot_to_dict
+
+
+class ParseWorker:
+    """Управляет единственным фоновым потоком опроса и его общим состоянием."""
+
+    def __init__(
+        self,
+        db: Database,
+        store: SettingsStore,
+        table_history: TableHistoryDatabase,
+    ) -> None:
+        """Связывает рабочий поток с настройками и двумя хранилищами истории."""
+        self._db = db
+        self._store = store
+        self._table_history = table_history
+        self._stop = threading.Event()
+        self._thread: threading.Thread | None = None
+        self._lock = threading.Lock()
+        self._latest: dict[str, Any] | None = None
+        self._status = "stopped"
+        self._error = ""
+        self._polls = 0
+
+    @property
+    def status(self) -> dict[str, Any]:
+        """Возвращает согласованный снимок состояния для HTTP API."""
+        with self._lock:
+            return {
+                "running": self._thread is not None and self._thread.is_alive(),
+                "status": self._status,
+                "error": self._error,
+                "polls": self._polls,
+                "snapshot": self._latest,
+            }
+
+    def start(self) -> None:
+        """Запускает daemon-поток, если опрос ещё не выполняется."""
+        with self._lock:
+            if self._thread is not None and self._thread.is_alive():
+                return
+            self._stop.clear()
+            self._status = "starting"
+            self._error = ""
+            self._thread = threading.Thread(
+                target=self._run, name="parse-worker", daemon=True
+            )
+            self._thread.start()
+        self._db.add_log("INFO", "worker", "Парсинг запущен")
+
+    def stop(self) -> None:
+        """Запрашивает остановку потока и ждёт её ограниченное время."""
+        self._stop.set()
+        thread = self._thread
+        if thread is not None and thread.is_alive():
+            thread.join(timeout=8)
+        if thread is not None and thread.is_alive():
+            # Не теряем ссылку на ещё работающий поток: иначе повторный start()
+            # сможет создать второй конкурентный опрос и две записи в БД.
+            message = "Остановка ещё выполняется: браузерная операция не завершена."
+            self._set_state("stopping", message)
+            self._db.add_log("WARNING", "worker", message)
+            return
+        with self._lock:
+            self._thread = None
+            self._status = "stopped"
+            self._error = ""
+        self._db.add_log("INFO", "worker", "Парсинг остановлен")
+
+    def load_html_file(self, path: Any) -> dict[str, Any]:
+        """Показывает в UI снимок из data_test без запуска опроса сайта."""
+        from pathlib import Path
+
+        from parsing_site.html_probe import snapshot_from_html_file
+
+        if self.status["running"]:
+            raise RuntimeError("Сначала остановите парсинг сайта.")
+        target = Path(path)
+        settings = self._store.current()
+        cfg = settings.to_app_config(load_config())
+        snapshot = snapshot_from_html_file(target, cfg.tracking)
+        self._table_history.save_snapshot(snapshot, source="test")
+        payload = snapshot_to_dict(snapshot)
+        with self._lock:
+            self._latest = payload
+            self._error = ""
+            self._status = "stopped"
+        self._db.add_log(
+            "INFO",
+            "probe",
+            f"Тестовый HTML {target.name}: динамических {len(snapshot.dynamics)}, "
+            f"строк {len(snapshot.rows)}",
+        )
+        return payload
+
+    def _set_state(self, status: str, error: str = "") -> None:
+        """Атомарно обновляет публичные статус и текст ошибки."""
+        with self._lock:
+            self._status = status
+            self._error = error
+
+    def _run(self) -> None:
+        """Подключается к Chrome, опрашивает вкладку и переподключается после ошибок."""
+        while not self._stop.is_set():
+            # Новое подключение может указывать на другой сайт или другой порядок
+            # DOM-маркеров. Не считаем перемещение относительно прежней сессии.
+            previous: dict[int, tuple[float, ...]] = {}
+            settings = self._store.current()
+            cfg = settings.to_app_config(load_config())
+            interval = max(0.4, settings.interval_seconds)
+            try:
+                with BrowserSession(cfg.browser) as session:
+                    self._set_state("running")
+                    self._db.add_log(
+                        "INFO",
+                        "worker",
+                        f"Подключено к браузеру, сайт: {settings.site}",
+                    )
+                    fingerprint = (
+                        settings.site,
+                        settings.cdp_url,
+                        settings.wait_for_selector,
+                    )
+                    while not self._stop.is_set():
+                        started = monotonic()
+                        settings = self._store.current()
+                        if (
+                            settings.site,
+                            settings.cdp_url,
+                            settings.wait_for_selector,
+                        ) != fingerprint:
+                            self._db.add_log(
+                                "INFO",
+                                "worker",
+                                "Переподключение: изменился сайт или CDP",
+                            )
+                            break
+                        cfg = settings.to_app_config(load_config())
+                        interval = max(0.4, settings.interval_seconds)
+                        snapshot = capture_snapshot(session, cfg.tracking)
+                        poll_id = self._db.save_snapshot(snapshot, previous)
+                        self._table_history.save_snapshot(snapshot)
+                        previous = {
+                            item.index: (item.x, item.y, item.lat, item.lng)
+                            for item in snapshot.dynamics
+                        }
+                        alerts = sum(
+                            1 for row in snapshot.rows if row.status == "alert"
+                        )
+                        with self._lock:
+                            self._polls += 1
+                            self._latest = snapshot_to_dict(snapshot)
+                            self._latest["poll_id"] = poll_id
+                            self._status = "running"
+                            self._error = ""
+                        if alerts:
+                            self._db.add_log(
+                                "WARNING",
+                                "tracking",
+                                f"Опрос #{poll_id}: {alerts} пар ближе порога",
+                            )
+                        remaining = interval - (monotonic() - started)
+                        if remaining > 0 and self._stop.wait(remaining):
+                            break
+            except BrowserNotConnectedError as exc:
+                self._fail("ERROR", str(exc), retry=interval)
+            # Worker является долгоживущей границей: ошибка одного опроса логируется,
+            # после чего цикл делает паузу и восстанавливается автоматически.
+            except Exception as exc:  # noqa: BLE001
+                self._fail("ERROR", f"Ошибка парсинга: {exc}", retry=interval)
+        self._set_state("stopped")
+
+    def _fail(self, level: str, message: str, retry: float) -> None:
+        """Фиксирует ошибку и делает прерываемую паузу перед новой попыткой."""
+        self._set_state("error", message)
+        self._db.add_log(level, "worker", message)
+        self._stop.wait(max(2.0, min(retry, 10.0)))

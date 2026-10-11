@@ -1,0 +1,9 @@
+Russia regional boundary data
+
+Source: https://github.com/antibioticbook/russian-geo-data
+Source file: topo-0.3.json
+Upstream source: GADM administrative boundaries, adapted by antibioticbook
+License: CC0 1.0 Universal (public domain dedication)
+Downloaded for this application on 2026-10-08.
+
+The data is bundled locally and the application does not contact the source at runtime.

@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Тестовая карта — движущиеся объекты</title>
+    <link rel="stylesheet" href="/static/css/test-map.css" />
+  </head>
+  <body>
+    <main class="test-app">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Parsing Site · тестовый стенд</p>
+          <h1>Движение объектов</h1>
+          <p class="subtitle">SVG-карта имитирует живую Leaflet-карту и передаёт точные lat/lng основной программе.</p>
+        </div>
+        <div class="controls">
+          <button id="pause" type="button">Пауза</button>
+          <button id="reset" type="button">Сначала</button>
+          <label>Скорость
+            <select id="speed">
+              <option value="0.5">×0,5</option>
+              <option value="1" selected>×1</option>
+              <option value="2">×2</option>
+              <option value="4">×4</option>
+            </select>
+          </label>
+        </div>
+      </header>
+
+      <section class="map-card">
+        <div class="map-meta">
+          <span><i class="dot dot--moving"></i> движущиеся объекты: <b id="object-count">0</b></span>
+          <span><i class="dot dot--static"></i> контрольные точки: Белгород и Курск</span>
+          <span>цикл движения: 3 минуты</span>
+        </div>
+        <div id="test-map" class="leaflet-container" aria-label="Тестовая SVG-карта">
+          <svg id="map-svg" viewBox="0 0 1000 620" role="img" aria-label="Карта центральной части России с движущимися объектами">
+            <defs>
+              <filter id="marker-shadow" x="-80%" y="-80%" width="260%" height="260%">
+                <feDropShadow dx="0" dy="3" stdDeviation="3" flood-opacity=".35" />
+              </filter>
+            </defs>
+            <rect class="map-water" width="1000" height="620" rx="18" />
+            <g id="regions" class="map-regions"></g>
+            <g id="grid" class="map-grid"></g>
+            <g id="routes" class="map-routes"></g>
+            <g id="static-markers" class="static-markers"></g>
+            <g id="dynamic-markers" class="dynamic-markers"></g>
+          </svg>
+          <div class="leaflet-control-zoom" aria-hidden="true"><span>+</span><span>−</span></div>
+          <div class="map-caption">Тестовая проекция · координаты WGS‑84</div>
+        </div>
+      </section>
+
+      <section class="objects-card">
+        <div class="objects-head">
+          <h2>Текущие координаты</h2>
+          <p>Имена и номера объектов сохраняются между опросами.</p>
+        </div>
+        <div id="object-list" class="object-list"></div>
+      </section>
+    </main>
+
+    <script src="/static/js/russia-map-data.js"></script>
+    <script src="/static/js/russia-additional-regions-data.js"></script>
+    <script src="/static/js/test-map.js"></script>
+  </body>
+</html>

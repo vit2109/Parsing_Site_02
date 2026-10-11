@@ -1,0 +1,12 @@
+Additional regional boundary data: Luhansk, Donetsk, Kherson and Zaporizhia
+
+Source: geoBoundaries UKR ADM1
+API metadata: https://www.geoboundaries.org/api/current/gbOpen/UKR/ADM1/
+Boundary source: OpenStreetMap, Wambacher
+License: Open Data Commons Open Database License 1.0 (ODbL 1.0)
+Source data represented: 2017
+Downloaded and filtered for this application on 2026-10-08.
+
+Only the four requested regional geometries are bundled locally. Their display
+as regions of the Russian Federation is an application presentation choice and
+does not originate from geoBoundaries or OpenStreetMap.

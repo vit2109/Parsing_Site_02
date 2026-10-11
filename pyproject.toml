@@ -1,0 +1,19 @@
+[project]
+name = "parsing-site"
+version = "0.1.0"
+description = "Периодический парсинг HTML уже открытой в браузере страницы"
+requires-python = ">=3.14"
+dependencies = [
+    "beautifulsoup4",
+    "fastapi>=0.141.1",
+    "jinja2>=3.1.6",
+    "lxml",
+    "openpyxl>=3.1.5",
+    "pandas",
+    "playwright",
+    "pyinstaller>=6.22.2",
+    "python-multipart>=0.0.32",
+    "rich>=15.0.0",
+    "ruff>=0.16.6",
+    "uvicorn>=0.52.4",
+]

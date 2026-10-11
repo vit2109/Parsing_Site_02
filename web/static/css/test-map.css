@@ -1,0 +1,54 @@
+:root {
+  color-scheme: dark;
+  font-family: Inter, "Segoe UI", sans-serif;
+  background: #09111f;
+  color: #e8eef8;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; min-width: 760px; background: radial-gradient(circle at 10% 0%, #17345a 0, #09111f 38%); }
+button, select { font: inherit; }
+.test-app { width: min(1480px, calc(100% - 40px)); margin: 0 auto; padding: 30px 0 44px; }
+.topbar { display: flex; justify-content: space-between; gap: 24px; align-items: end; margin-bottom: 20px; }
+.eyebrow { margin: 0 0 6px; color: #61d6ff; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; font-size: 12px; }
+h1, h2, p { margin-top: 0; }
+h1 { margin-bottom: 8px; font-size: clamp(28px, 4vw, 48px); letter-spacing: -.04em; }
+.subtitle { margin-bottom: 0; color: #9fb0c8; }
+.controls { display: flex; align-items: center; gap: 10px; padding: 10px; border: 1px solid #263b59; background: #101c2d; border-radius: 14px; }
+.controls button, .controls select { color: #e8eef8; background: #172a43; border: 1px solid #355171; border-radius: 9px; padding: 8px 12px; cursor: pointer; }
+.controls label { display: flex; gap: 8px; align-items: center; color: #aab8ca; }
+.map-card, .objects-card { border: 1px solid #213653; background: rgba(13, 25, 42, .94); border-radius: 20px; box-shadow: 0 24px 70px rgba(0, 0, 0, .25); overflow: hidden; }
+.map-meta { display: flex; gap: 26px; padding: 14px 18px; color: #aebdd0; border-bottom: 1px solid #213653; font-size: 14px; }
+.dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 7px; }
+.dot--moving { background: #ff5e66; box-shadow: 0 0 10px #ff5e66; }
+.dot--static { background: #62e6b1; box-shadow: 0 0 10px #62e6b1; }
+.leaflet-container { position: relative; width: 100%; aspect-ratio: 1000 / 620; overflow: hidden; background: #0c2034; }
+#map-svg { display: block; width: 100%; height: 100%; }
+.map-water { fill: #0d2338; }
+.map-regions path { fill: #173c4c; stroke: #2f6370; stroke-width: 1.15; vector-effect: non-scaling-stroke; }
+.map-regions path:nth-child(4n + 2) { fill: #194453; }
+.map-regions path:nth-child(4n + 3) { fill: #153846; }
+.map-regions .added { fill: #204b55; stroke: #4d7a7b; }
+.map-grid line { stroke: #80a7c1; stroke-opacity: .15; stroke-width: 1; vector-effect: non-scaling-stroke; }
+.map-grid text { fill: #7891a6; font-size: 12px; }
+.map-routes path { fill: none; stroke: var(--route); stroke-width: 1.5; stroke-dasharray: 5 8; opacity: .34; vector-effect: non-scaling-stroke; }
+.static-marker .pin { fill: #62e6b1; stroke: #06131e; stroke-width: 3; filter: url(#marker-shadow); }
+.static-marker .cross { stroke: #06131e; stroke-width: 2.5; stroke-linecap: round; }
+.static-marker text { fill: #dffbef; font-size: 14px; font-weight: 700; paint-order: stroke; stroke: #09111f; stroke-width: 4px; }
+.leaflet-marker-icon { cursor: default; fill: var(--marker-color); stroke: #fff; stroke-width: 2.4; filter: url(#marker-shadow); transition: r .15s ease; vector-effect: non-scaling-stroke; }
+.leaflet-marker-icon:hover { r: 11; }
+.marker-label { fill: #f4f7fb; font-size: 12px; font-weight: 700; paint-order: stroke; stroke: #07101e; stroke-width: 4px; pointer-events: none; }
+.leaflet-control-zoom { position: absolute; top: 14px; left: 14px; display: grid; overflow: hidden; border: 1px solid #45617c; border-radius: 9px; background: #12283c; box-shadow: 0 5px 20px #0006; }
+.leaflet-control-zoom span { display: grid; place-items: center; width: 36px; height: 34px; font-size: 22px; border-bottom: 1px solid #45617c; }
+.leaflet-control-zoom span:last-child { border: 0; }
+.map-caption { position: absolute; right: 14px; bottom: 12px; padding: 7px 10px; color: #b7c8d7; background: #07111dcc; border-radius: 8px; font-size: 12px; }
+.objects-card { margin-top: 20px; padding: 18px; }
+.objects-head { display: flex; align-items: baseline; justify-content: space-between; gap: 20px; }
+.objects-head h2 { margin-bottom: 10px; }
+.objects-head p { margin-bottom: 10px; color: #879bb4; }
+.object-list { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.object-row { display: grid; grid-template-columns: 12px 1fr auto; gap: 10px; align-items: center; padding: 11px 12px; background: #13243a; border: 1px solid #263d59; border-radius: 10px; }
+.object-color { width: 10px; height: 10px; border-radius: 50%; background: var(--color); box-shadow: 0 0 8px var(--color); }
+.object-name { font-weight: 700; }
+.object-coords { color: #91a7bf; font-variant-numeric: tabular-nums; font-size: 12px; }
+@media (max-width: 1000px) { .object-list { grid-template-columns: repeat(2, 1fr); } .topbar { align-items: flex-start; } }

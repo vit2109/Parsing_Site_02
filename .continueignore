@@ -1,0 +1,12 @@
+.venv/
+.uv-cache/
+build/
+dist/
+**/__pycache__/
+*.exe
+*.pyc
+*.db
+*.db-shm
+*.db-wal
+data/page_*.html
+

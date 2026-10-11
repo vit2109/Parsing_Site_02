@@ -1,0 +1,62 @@
+# Настройки парсера. Меняйте селекторы под конкретный сайт.
+
+[browser]
+cdp_url = "http://127.0.0.1:9222"
+url_contains = "8000"
+wait_for_selector = ".leaflet-marker-icon.map-incident, .dynamic"
+wait_timeout_ms = 10000
+
+[schedule]
+interval_seconds = 2
+
+[extract]
+extract_tables = false
+tables_limit = 10
+
+[extract.selectors]
+
+[output]
+data_dir = "data"
+save_jsonl = true
+save_csv = true
+save_html = true
+
+# Leaflet map-incident (см. data_test/1.html)
+[tracking]
+enabled = true
+dynamic_selector = ".leaflet-marker-icon.map-incident"
+static_selector = ".static"
+static_source = "config"
+# screen | map_relative | percent | latlng
+# latlng: расстояние в километрах (haversine). Устойчиво к зуму и сдвигу карты.
+coordinate_mode = "latlng"
+map_container_selector = ".leaflet-container"
+# Эталонный zoom Leaflet (0 = не проверять). lock_scale — для режимов в px
+reference_zoom = 0
+lock_scale = false
+# Пороги: в km для latlng, в px для остальных режимов
+threshold = 125.0
+warning_ratio = 1.4
+warning_distance = 150.0
+alert_color = "#9b1c1c"
+warning_color = "#d4a017"
+
+# Статичные точки вручную.
+# latlng: укажите lat/lng (пороги threshold в километрах).
+# Пиксели x/y при каждом опросе пересчитываются из lat/lng под текущий зум/сдвиг.
+# map_relative / percent / screen: x/y в px или % (пороги в px)
+[[tracking.static_objects]]
+id = 1
+name = "Белгород"
+x = 0
+y = 0
+lat = 50.595
+lng = 36.587
+
+[[tracking.static_objects]]
+id = 2
+name = "Курск"
+x = 0
+y = 0
+lat = 51.737
+lng = 36.187

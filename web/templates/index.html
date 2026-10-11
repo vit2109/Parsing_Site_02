@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <!-- Веб-интерфейс мониторинга: таблица пар «точка ↔ объект» и настройки. -->
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Мониторинг объектов</title>
+    <link rel="stylesheet" href="/static/css/app.css" />
+  </head>
+  <body>
+    <div class="app">
+      <header class="topbar">
+        <div>
+          <p class="kicker">Parsing Site</p>
+          <h1>Мониторинг расстояний</h1>
+        </div>
+        <div class="topbar__meta">
+          <span id="site-label" class="site-chip">{{ settings.site }}</span>
+          <span id="status-chip" class="status stopped">остановлен</span>
+        </div>
+        <div class="topbar__actions">
+          <a class="btn btn-history" href="/history">Хронология</a>
+          <button id="btn-start" class="btn btn-primary" type="button">Запустить</button>
+          <button id="btn-stop" class="btn" type="button" disabled>Стоп</button>
+          <button id="btn-test-html" class="btn" type="button">Тест HTML</button>
+          <button id="btn-settings" class="btn btn-ghost" type="button">Настройки</button>
+        </div>
+      </header>
+
+      <section class="stats" id="stats">
+        <article><span>Динамических</span><strong id="stat-dyn">0</strong></article>
+        <article><span>Статичных</span><strong id="stat-stat">0</strong></article>
+        <article><span>Красных</span><strong id="stat-alert">0</strong></article>
+        <article><span>Жёлтых</span><strong id="stat-warn">0</strong></article>
+        <article><span>Интервал</span><strong id="stat-interval">{{ settings.interval_seconds }} с</strong></article>
+        <article><span>Опросов</span><strong id="stat-polls">0</strong></article>
+        <article title="Оценка по текущему интервалу обновления"><span>Строк истории / сутки</span><strong id="stat-history-rows-day">0</strong></article>
+        <article title="Отдельная база table_history.db"><span>Объём БД / сутки</span><strong id="stat-history-size-day">0 Б</strong></article>
+      </section>
+
+      <p id="error-banner" class="error-banner" hidden></p>
+
+      <p id="scale-warning" class="scale-warning" hidden></p>
+
+      <section class="panel">
+        <div class="panel__head">
+          <h2>Таблица расстояний</h2>
+          <p id="table-meta" class="muted">Ожидание запуска</p>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>№ статичного</th>
+                <th>Координаты статичного</th>
+                <th>Динамический объект</th>
+                <th>№ динамического</th>
+                <th>Координаты динамического</th>
+                <th>Расстояние</th>
+                <!-- Сколько динамических объектов красные и жёлтые относительно этой статичной точки (одно число на цвет, одинаково во всех строках точки). -->
+                <th>Кр. / жёл. у точки</th>
+                <th>Статус</th>
+                <th>Телефон</th>
+              </tr>
+            </thead>
+            <tbody id="distance-body">
+              <tr class="empty"><td colspan="9">Нет данных. Запустите парсинг или «Тест HTML».</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="split">
+        <article class="panel">
+          <div class="panel__head">
+            <h2>Логи</h2>
+          </div>
+          <ol id="log-list" class="log-list"></ol>
+        </article>
+        <article class="panel">
+          <div class="panel__head">
+            <h2>Перемещения</h2>
+            <p class="muted">последние записи SQLite</p>
+          </div>
+          <div class="table-wrap compact">
+            <table>
+              <thead>
+                <tr>
+                  <th>Время</th>
+                  <th>Объект</th>
+                  <th>X</th>
+                  <th>Y</th>
+                  <th>Сдвиг</th>
+                </tr>
+              </thead>
+              <tbody id="move-body">
+                <tr class="empty"><td colspan="5">Пока пусто</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </article>
+      </section>
+    </div>
+
+    <dialog id="settings-dialog">
+      <form id="settings-form" method="dialog">
+        <header>
+          <h2>Настройки</h2>
+          <p>Основные параметры опроса и подсветки</p>
+        </header>
+        <div class="form-grid">
+          <label>
+            Сайт для парсинга
+            <input name="site" type="text" required value="{{ settings.site }}" />
+          </label>
+          <label>
+            Селектор динамических объектов
+            <input name="dynamic_selector" type="text" required value="{{ settings.dynamic_selector }}" />
+          </label>
+          <label>
+            Режим координат
+            <select name="coordinate_mode">
+              <option value="latlng" {% if settings.coordinate_mode == 'latlng' %}selected{% endif %}>lat/lng (километры, устойчиво к зуму)</option>
+              <option value="map_relative" {% if settings.coordinate_mode == 'map_relative' %}selected{% endif %}>px относительно карты</option>
+              <option value="percent" {% if settings.coordinate_mode == 'percent' %}selected{% endif %}>% контейнера карты</option>
+              <option value="screen" {% if settings.coordinate_mode == 'screen' %}selected{% endif %}>px экрана</option>
+            </select>
+          </label>
+          <label>
+            Контейнер карты (CSS)
+            <input name="map_container_selector" type="text" value="{{ settings.map_container_selector }}" />
+          </label>
+          <label>
+            Время парсинга, сек
+            <input name="interval_seconds" type="number" min="0.4" step="0.1" required value="{{ settings.interval_seconds }}" />
+          </label>
+          <label>
+            Красный порог (км в latlng, иначе px)
+            <input name="threshold" type="number" min="0.001" step="0.1" required value="{{ settings.threshold }}" />
+          </label>
+          <label>
+            Жёлтый порог (км в latlng, иначе px)
+            <input name="warning_distance" type="number" min="0.001" step="0.1" required value="{{ settings.warning_distance }}" />
+          </label>
+          <label>
+            Эталонный zoom Leaflet (0 = не проверять)
+            <input name="reference_zoom" type="number" min="0" step="1" value="{{ settings.reference_zoom }}" />
+          </label>
+          <label class="checkbox">
+            <input name="lock_scale" type="checkbox" {% if settings.lock_scale %}checked{% endif %} />
+            Предупреждать при смене масштаба карты
+          </label>
+          <label>
+            Цвет красного выделения
+            <input name="alert_color" type="color" required value="{{ settings.alert_color }}" />
+          </label>
+          <label>
+                      Цвет жёлтого выделения
+                      <input name="warning_color" type="color" required value="{{ settings.warning_color }}" />
+                    </label>
+                    <label class="checkbox">
+                      <input name="sound_enabled" type="checkbox" />
+                      Включать звуковой сигнал при появлении красных записей
+                    </label>
+                  </div>
+        <div class="static-block">
+          <div class="static-block__head">
+            <h3>Статичные объекты (вручную)</h3>
+            <button type="button" class="btn" id="btn-add-static">+ Точка</button>
+          </div>
+          <p class="muted static-hint">
+            Канонические координаты — lat/lng. При зуме и сдвиге карты x/y пересчитываются,
+            расстояние в километрах не меняется. Если задать только x/y, lat/lng снимутся
+            с текущего вида карты.
+          </p>
+          <div id="static-list" class="static-list"></div>
+        </div>
+        <p id="settings-error" class="form-error" hidden></p>
+        <footer>
+          <button value="cancel" class="btn" type="button" id="btn-cancel">Отмена</button>
+          <button value="save" class="btn btn-primary" type="submit">Сохранить</button>
+        </footer>
+      </form>
+    </dialog>
+
+    <script>
+      window.__INITIAL_SETTINGS__ = {{ settings | tojson }};
+    </script>
+    <script src="/static/js/app.js?v=2"></script>
+  </body>
+</html>
